@@ -16,7 +16,7 @@ public class Producer {
         props.put("buffer.memory", 33554432);
 
         KafkaProducer<String, String> prod = new KafkaProducer<>(props);
-        String topic = "rawtweets";
+        String topic = "topic-test";
         int count = 0;
 
         while (true){
