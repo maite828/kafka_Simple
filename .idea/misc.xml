@@ -11,4 +11,11 @@
   <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" default="true" project-jdk-name="1.8" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />
   </component>
+  <component name="jsonEditor">
+    <option name="stateMap">
+      <map>
+        <entry key="kafka twitter" value="{&#10;  &quot;name&quot;: &quot;zhengtao&quot;,&#10;  &quot;age&quot;: 18,&#10;  &quot;isHandsome&quot;: true,&#10;  &quot;email&quot;: &quot;hj_zhengt@163.com&quot;,&#10;  &quot;timestamp&quot;: 1598963565962,&#10;  &quot;oneDate&quot;: &quot;2009-09-01 14:22:41&quot;,&#10;  &quot;birthday&quot;: &quot;1991-10-01&quot;,&#10;  &quot;address&quot;: {&#10;    &quot;country&quot;: &quot;China&quot;,&#10;    &quot;province&quot;: &quot;AnHui&quot;,&#10;    &quot;city&quot;: &quot;MingGuang&quot;&#10;  },&#10;  &quot;hobbys&quot;: [&#10;    {&#10;      &quot;order&quot;: &quot;first&quot;,&#10;      &quot;name&quot;: &quot;coding&quot;&#10;    },&#10;    {&#10;      &quot;order&quot;: &quot;second&quot;,&#10;      &quot;name&quot;: &quot;fishing&quot;&#10;    },&#10;    {&#10;      &quot;order&quot;: &quot;third&quot;,&#10;      &quot;name&quot;: &quot;whatever&quot;&#10;    }&#10;  ]&#10;}" />
+      </map>
+    </option>
+  </component>
 </project>

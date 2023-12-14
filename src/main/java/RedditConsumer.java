@@ -1,71 +1,44 @@
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.json.JSONObject;
 
-import org.apache.kafka.streams.kstream.Printed;
-
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Properties;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-public
-
-class RedditConsumer {
-
-    public static ObjectMapper objectMapper = new ObjectMapper();
-    public final static String TOPIC_NAME = "rawtweets"; // Corrected topic name
+public class RedditConsumer {
+    public static final String TOPIC_NAME = "reddit-posts";
 
     public static void main(String[] args) {
         Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "reddithashtagscounterappkk1");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "reddit-consumer-group");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
+        Consumer<String, String> consumer = new KafkaConsumer<>(props);
+        consumer.subscribe(Collections.singletonList(TOPIC_NAME));
 
-        final StreamsBuilder builder = new StreamsBuilder();
-        final KStream<String, String> redditPosts = builder.stream(TOPIC_NAME); // Corrected topic name
-
-        redditPosts.flatMapValues(value -> {
-                    JsonNode root;
-                    try {
-                        JsonParser parser = objectMapper.getFactory().createParser(value);
-                        parser.configure(JsonParser.Feature.ALLOW_COMMENTS, true);
-                        root = parser.readValueAsTree();
-
-                        if (!root.isValueNode()) {
-                            return Collections.emptyList();
-                        }
-
-                        JsonNode selftextNode = root.path("selftext");
-                        if (selftextNode != null && !selftextNode.toString().equals("null")) {
-                            // Extract hashtags from the selftext field
-                            Pattern hashTagPattern = Pattern.compile("#\\w+");
-                            Matcher matcher = hashTagPattern.matcher(selftextNode.asText());
-                            if (matcher.find()) {
-                                return Collections.singletonList(matcher.group());
-                            }
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    return Collections.emptyList();
-                })
-                .groupBy((key, value) -> value)
-                .count()
-                .toStream()
-                .print(Printed.toSysOut());
-        Topology topology = builder.build();
-        try (KafkaStreams streams = new KafkaStreams(topology, props)) {
-            streams.start();
+        while (true) {
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+            records.forEach(record -> processRedditPost(record.value()));
         }
+    }
+
+    private static void processRedditPost(String jsonMessage) {
+        JSONObject redditPost = new JSONObject(jsonMessage);
+        String title = redditPost.getString("title");
+        String subreddit = redditPost.getString("subreddit");
+        String url = redditPost.getString("url");
+
+        // Puedes realizar cualquier procesamiento adicional aquí
+        System.out.println("Received Reddit Post:");
+        System.out.println("Title: " + title);
+        System.out.println("Subreddit: " + subreddit);
+        System.out.println("URL: " + url);
+        System.out.println("----------------------");
     }
 }

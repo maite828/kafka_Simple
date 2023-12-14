@@ -1,0 +1,49 @@
+¡Explicación del código en español:
+
+Configuración del Consumidor de Kafka:
+
+java
+Copy code
+Properties props = new Properties();
+props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+props.put(ConsumerConfig.GROUP_ID_CONFIG, "reddit-consumer-group");
+props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+BOOTSTRAP_SERVERS_CONFIG: Especifica la dirección del servidor Kafka.
+GROUP_ID_CONFIG: Identifica el grupo de consumidores al que pertenece este consumidor.
+KEY_DESERIALIZER_CLASS_CONFIG y VALUE_DESERIALIZER_CLASS_CONFIG: Especifican deserializadores para las claves y los valores de los mensajes.
+Creación del Consumidor:
+
+java
+Copy code
+Consumer<String, String> consumer = new KafkaConsumer<>(props);
+consumer.subscribe(Collections.singletonList(TOPIC_NAME));
+Se crea una instancia del consumidor Kafka y se suscribe al tema ("reddit-posts").
+Bucle de Consumo:
+
+java
+Copy code
+while (true) {
+    ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+    records.forEach(record -> processRedditPost(record.value()));
+}
+El consumidor entra en un bucle infinito que está constantemente revisando si hay nuevos registros en el tema.
+Para cada conjunto de registros, se llama a processRedditPost para procesar cada mensaje.
+Procesamiento del Mensaje:
+
+java
+Copy code
+private static void processRedditPost(String jsonMessage) {
+    JSONObject redditPost = new JSONObject(jsonMessage);
+    String title = redditPost.getString("title");
+    String subreddit = redditPost.getString("subreddit");
+    String url = redditPost.getString("url");
+
+    System.out.println("Received Reddit Post:");
+    System.out.println("Title: " + title);
+    System.out.println("Subreddit: " + subreddit);
+    System.out.println("URL: " + url);
+    System.out.println("----------------------");
+}
+Este método toma el mensaje JSON, extrae la información relevante ("title", "subreddit", "url") y la imprime en la consola.
+Puedes personalizar este método según tus necesidades específicas de procesamiento.

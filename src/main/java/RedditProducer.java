@@ -1,47 +1,37 @@
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.jsoup.Connection;
-import org.jsoup.Jsoup;
-import org.slf4j.Logger;
-
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Properties;
 
 public class RedditProducer {
-
-    public static final String TOPIC_NAME = "rawtweets";
-    private static final String PUSHSHIFT_API_URL = "https://api.pushshift.io/reddit/search/submission";
-
-    private static final Logger logger = LoggerFactory.getLogger(RedditProducer.class); // Initialize logger
+    public static final String TOPIC_NAME = "reddit-posts";
+    private static final String REDDIT_API_URL = "https://api.reddit.com/r/popular";
 
     public static void main(String[] args) throws IOException {
-
         Properties props = new Properties();
-        props.put("acks", "1");
-        props.put("retries", 0);
-        props.put("batch.size", 16384);
-        props.put("buffer.memory", 33554432);
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,"localhost:9092");
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
 
         try (KafkaProducer<String, String> producer = new KafkaProducer<>(props)) {
-
-        while (true) {
-            try {
-                String response = getRedditPosts(); // Attempt to fetch data from the PushShift API
-                parseAndPublishRedditPosts(response, producer);
-            } catch (IOException e) {
-                logger.error("Error fetching Reddit posts:", e); // Log error message
-            }
-
+            while (true) {
                 try {
-                    Thread.sleep(10000); // Sleep for 10 seconds before fetching new posts
+                    String response = getRedditPosts();
+                    parseAndPublishRedditPosts(response, producer);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                try {
+                    Thread.sleep(10000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -50,33 +40,30 @@ public class RedditProducer {
     }
 
     private static String getRedditPosts() throws IOException {
-        Connection connection = Jsoup.connect(PUSHSHIFT_API_URL) // Connect to the PushShift API
-                .method(Connection.Method.GET); // Set the HTTP method to GET
+        HttpClient httpClient = HttpClients.createDefault();
+        HttpGet httpGet = new HttpGet(REDDIT_API_URL);
+        httpGet.setHeader("Accept", "application/json");
+        httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
 
-        logger.info("Fetching Reddit posts from {}", PUSHSHIFT_API_URL); // Log fetching information
+        HttpResponse response = httpClient.execute(httpGet);
 
-        return connection.execute().body(); // Execute the request and return the response body
+        return EntityUtils.toString(response.getEntity());
     }
 
     private static void parseAndPublishRedditPosts(String response, KafkaProducer<String, String> producer) {
-        JSONObject jsonObject = new JSONObject(response); // Parse the JSON response
-        JSONArray postsArray = jsonObject.getJSONArray("data");
-
+        JSONObject jsonObject = new JSONObject(response);
+        JSONArray postsArray = jsonObject.getJSONObject("data").getJSONArray("children");
         for (int i = 0; i < postsArray.length(); i++) {
-            JSONObject postObject = postsArray.getJSONObject(i);
+            JSONObject postObject = postsArray.getJSONObject(i).getJSONObject("data");
             String title = postObject.getString("title");
-            String selftext = postObject.getString("selftext");
             String subreddit = postObject.getString("subreddit");
             String url = postObject.getString("url");
 
-            // Create a JSON object to represent the Reddit post
             JSONObject redditPost = new JSONObject();
             redditPost.put("title", title);
-            redditPost.put("selftext", selftext);
             redditPost.put("subreddit", subreddit);
             redditPost.put("url", url);
 
-            // Send the JSON representation of the Reddit post to the Kafka topic
             producer.send(new ProducerRecord<>(TOPIC_NAME, subreddit, redditPost.toString()));
         }
     }

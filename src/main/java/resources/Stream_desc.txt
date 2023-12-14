@@ -1,0 +1,58 @@
+Configuración de propiedades de Kafka Streams:
+
+java
+Copy code
+Properties streamsProps = new Properties();
+streamsProps.put(StreamsConfig.APPLICATION_ID_CONFIG, "reddit-streams");
+streamsProps.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+streamsProps.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, org.apache.kafka.common.serialization.Serdes.String().getClass().getName());
+streamsProps.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, org.apache.kafka.common.serialization.Serdes.String().getClass().getName());
+Aquí se establecen las propiedades necesarias para la configuración de Kafka Streams.
+APPLICATION_ID_CONFIG es un identificador único para la aplicación de Kafka Streams.
+BOOTSTRAP_SERVERS_CONFIG especifica la dirección de los servidores de Kafka.
+DEFAULT_KEY_SERDE_CLASS_CONFIG y DEFAULT_VALUE_SERDE_CLASS_CONFIG definen los deserializadores predeterminados para las claves y los valores.
+Creación del constructor de streams:
+
+java
+Copy code
+StreamsBuilder builder = new StreamsBuilder();
+Se crea un StreamsBuilder, que es la clase principal para construir topologías de procesamiento de streams.
+Lectura de mensajes desde el tema "reddit-posts":
+
+java
+Copy code
+KStream<String, String> redditPosts = builder.stream("reddit-posts");
+builder.stream("reddit-posts") crea un KStream que lee mensajes desde el tema "reddit-posts".
+Impresión de cada registro en el KStream:
+
+java
+Copy code
+redditPosts = redditPosts.peek((key, value) -> System.out.println("Received record: key=" + key + ", value=" + value));
+peek permite realizar una acción (en este caso, imprimir) en cada registro del KStream sin cambiar el flujo de datos.
+Procesamiento de mensajes:
+
+java
+Copy code
+redditPosts
+        .groupByKey()
+        .count(Materialized.as("reddit-post-count"))
+        .toStream()
+        .to("processed-reddit-posts", Produced.with(org.apache.kafka.common.serialization.Serdes.String(), org.apache.kafka.common.serialization.Serdes.Long()));
+Se agrupan los mensajes por clave (groupByKey) y se cuentan (count).
+El resultado se almacena en un estado materializado llamado "reddit-post-count".
+Finalmente, se envían los resultados al nuevo tema "processed-reddit-posts".
+Inicialización y ejecución de KafkaStreams:
+
+java
+Copy code
+KafkaStreams streams = new KafkaStreams(builder.build(), streamsProps);
+streams.start();
+Se crea una instancia de KafkaStreams con la topología construida y las propiedades especificadas.
+La aplicación se inicia con streams.start().
+Cierre de la aplicación:
+
+java
+Copy code
+Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
+Se agrega un gancho de cierre para cerrar la aplicación de manera ordenada cuando se detecta una señal de cierre.
+En resumen, este código utiliza Kafka Streams para consumir mensajes del tema "reddit-posts", imprimir cada mensaje en la consola y luego realizar un procesamiento simple (contar mensajes por clave) antes de enviar los resultados al nuevo tema "processed-reddit-posts".
