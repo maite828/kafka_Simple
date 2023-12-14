@@ -12,9 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Properties;
 
-public
-
-class RedditProducer {
+public class RedditProducer {
 
     public static final String TOPIC_NAME = "rawtweets";
     private static final String PUSHSHIFT_API_URL = "https://api.pushshift.io/reddit/search/submission";
@@ -32,7 +30,7 @@ class RedditProducer {
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,"localhost:9092");
 
-        final KafkaProducer<String, String> producer = new KafkaProducer<>(props);
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props)) {
 
         while (true) {
             try {
@@ -42,10 +40,11 @@ class RedditProducer {
                 logger.error("Error fetching Reddit posts:", e); // Log error message
             }
 
-            try {
-                Thread.sleep(10000); // Sleep for 10 seconds before fetching new posts
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                try {
+                    Thread.sleep(10000); // Sleep for 10 seconds before fetching new posts
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

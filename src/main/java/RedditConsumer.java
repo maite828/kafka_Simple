@@ -64,25 +64,8 @@ class RedditConsumer {
                 .toStream()
                 .print(Printed.toSysOut());
         Topology topology = builder.build();
-        final KafkaStreams streams = new KafkaStreams(topology, props);
-        streams.start();
-    }
-
-    public
-
-    static String getHashtags(String input)
-
-    {
-        JsonNode root;
-        try {
-            root = objectMapper.readTree(input);
-            JsonNode hashtagsNode = root.path("entities").path("hashtags"); // Extract hashtags from "entities" field
-            if (!hashtagsNode.toString().equals("[]")) {
-                return hashtagsNode.get(0).path("text").asText();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        try (KafkaStreams streams = new KafkaStreams(topology, props)) {
+            streams.start();
         }
-        return "";
     }
 }
